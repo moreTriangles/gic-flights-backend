@@ -1,7 +1,7 @@
 DROP TABLE IF EXISTS flights;
 
 CREATE TABLE flights (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     flight_name TEXT NOT NULL,
     departure_city TEXT NOT NULL,
     arrival_city TEXT NOT NULL,

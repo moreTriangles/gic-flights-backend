@@ -1,7 +1,8 @@
+from datetime import datetime
 import json
 import os
 
-from flask import Flask, make_response
+from flask import Flask, make_response, request
 from . import db
 
 def create_app(test_config=None):
@@ -31,6 +32,16 @@ def create_app(test_config=None):
     @app.route('/getFlights', methods=['GET'])
     def getFlights():
         res = make_response(json.dumps(db.getFlights()))
+        res.headers.add("Access-Control-Allow-Origin", "*")
+        return res
+    
+    @app.route('/getBestFlights')
+    def getBestFlights():
+        startDateString = request.args.get('startDate')
+        startDate = datetime.fromisoformat(startDateString)
+        endDateString = request.args.get('endDate')
+        endDate = datetime.fromisoformat(endDateString)
+        res = make_response(json.dumps(db.getBestFlights(startDate, endDate)))
         res.headers.add("Access-Control-Allow-Origin", "*")
         return res
     

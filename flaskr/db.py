@@ -1,5 +1,7 @@
 import sqlite3
+from turtle import home
 
+import datetime
 import click
 import pandas as pd
 from flask import current_app, g
@@ -13,7 +15,6 @@ def get_db():
             detect_types=sqlite3.PARSE_DECLTYPES
         )
         g.db.row_factory = sqlite3.Row
-        
     return g.db
 
 def close_db(e=None):
@@ -76,6 +77,7 @@ def getFlights():
     
     for row in cursor:
         flight = dict()
+        flight['id'] = row['id']
         flight['flight_name'] = row['flight_name']
         flight['departure_city'] = row['departure_city']
         flight['arrival_city'] = row['arrival_city']
@@ -90,3 +92,68 @@ def getFlights():
     cursor.close()
     return flights
 
+def next4days(x):
+    ans = []
+    for i in range(x, x+4):
+        ans.append(i % 7)
+    return ans
+
+def parseResultRowWithDate(row, date):
+    flight = {}
+    # flight['id'] = row['id']
+    flight['flight_name'] = row['flight_name']
+    flight['departure_city'] = row['departure_city']
+    flight['arrival_city'] = row['arrival_city']
+    flight['departure_time'] = row['departure_time']
+    flight['arrival_time'] = row['arrival_time']
+    flight['date'] = date
+    flight['price'] = row['price']
+    # flight['additional_days'] = row['additional_days']
+    return flight
+
+# Gets best departure and return flights based on a start and end date
+# Assume direct flights only
+def getBestFlights(startDate: datetime, endDate: datetime):
+    cursor = getCursor()
+    startDay = startDate.weekday()
+    startWindow = next4days(startDay)
+    
+    # Get cheapest departure flight in the next 4 days
+    cursor.execute('SELECT * FROM flights WHERE departure_city = "Singapore" AND arrival_city = "Incheon"')
+    startFlights = []
+    for row in cursor:
+        schedule = str(row['schedule']).split(',')
+        schedule = [int(x)-1 for x in schedule]
+        for day in schedule:
+            if day in startWindow:
+                date = startDate + datetime.timedelta(days=startWindow.index(day))
+                startFlights.append(parseResultRowWithDate(row, date))
+                break
+    
+    startFlights.sort(key=lambda x: x['price'])
+    startFlight = startFlights[0]
+    
+    # Get best return flight
+    delta = startFlight['date'] - startDate
+    endDate = endDate + datetime.timedelta(days = delta.days)
+    endDay = endDate.weekday()
+    cursor.execute('SELECT * FROM flights WHERE departure_city = "Incheon" AND arrival_city = "Singapore"')
+    returnFlights = []
+    returnWindow = next4days(endDay)
+    for row in cursor:
+        schedule = str(row['schedule']).split(',')
+        schedule = [int(x)-1 for x in schedule]
+        for day in schedule:
+            if day in returnWindow:
+                date = endDate + datetime.timedelta(days=returnWindow.index(day))
+                returnFlights.append(parseResultRowWithDate(row, date))
+                break
+    returnFlights.sort(key=lambda x: x['price'])
+    returnFlight = returnFlights[0]
+
+    startFlight['date'] = startFlight['date'].strftime('%Y-%m-%d')
+    returnFlight['date'] = returnFlight['date'].strftime('%Y-%m-%d')
+    
+    return [startFlight, returnFlight]
+        
+    
